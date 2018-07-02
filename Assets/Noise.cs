@@ -1,28 +1,19 @@
 ﻿using UnityEngine;
 
-public delegate NoiseSample NoiseMethod (Vector3 point, float frequency);
+public delegate NoiseSample NoiseMethod (Vector3 point, float frequency, int repeatable_tiles);
 
 public enum NoiseMethodType {
-	Value,
 	Perlin
 }
 
 public static class Noise {
 
-	public static NoiseMethod[] valueMethods = {
-		Value1D,
-		Value2D,
-		Value3D
-	};
-
 	public static NoiseMethod[] perlinMethods = {
-		Perlin1D,
 		Perlin2D,
 		Perlin3D
 	};
 
 	public static NoiseMethod[][] methods = {
-		valueMethods,
 		perlinMethods
 	};
 
@@ -145,157 +136,8 @@ public static class Noise {
 	}
 
 	private static float sqr2 = Mathf.Sqrt(2f);
-
-	public static NoiseSample Value1D (Vector3 point, float frequency) {
-		point *= frequency;
-		int i0 = Mathf.FloorToInt(point.x);
-		float t = point.x - i0;
-		i0 &= hashMask;
-		int i1 = i0 + 1;
-
-		int h0 = hash[i0];
-		int h1 = hash[i1];
-
-		float dt = SmoothDerivative(t);
-		t = Smooth(t);
-
-		float a = h0;
-		float b = h1 - h0;
-
-		NoiseSample sample;
-		sample.value = a + b * t;
-		sample.derivative.x = b * dt;
-		sample.derivative.y = 0f;
-		sample.derivative.z = 0f;
-		sample.derivative *= frequency;
-		return sample * (1f / hashMask);
-	}
-
-	public static NoiseSample Value2D (Vector3 point, float frequency) {
-		point *= frequency;
-		int ix0 = Mathf.FloorToInt(point.x);
-		int iy0 = Mathf.FloorToInt(point.y);
-		float tx = point.x - ix0;
-		float ty = point.y - iy0;
-		ix0 &= hashMask;
-		iy0 &= hashMask;
-		int ix1 = ix0 + 1;
-		int iy1 = iy0 + 1;
-
-		int h0 = hash[ix0];
-		int h1 = hash[ix1];
-		int h00 = hash[h0 + iy0];
-		int h10 = hash[h1 + iy0];
-		int h01 = hash[h0 + iy1];
-		int h11 = hash[h1 + iy1];
-
-		float dtx = SmoothDerivative(tx);
-		float dty = SmoothDerivative(ty);
-		tx = Smooth(tx);
-		ty = Smooth(ty);
-
-		float a = h00;
-		float b = h10 - h00;
-		float c = h01 - h00;
-		float d = h11 - h01 - h10 + h00;
-
-		NoiseSample sample;
-		sample.value = a + b * tx + (c + d * tx) * ty;
-		sample.derivative.x = (b + d * ty) * dtx;
-		sample.derivative.y = (c + d * tx) * dty;
-		sample.derivative.z = 0f;
-		sample.derivative *= frequency;
-		return sample * (1f / hashMask);
-	}
-
-	public static NoiseSample Value3D (Vector3 point, float frequency) {
-		point *= frequency;
-		int ix0 = Mathf.FloorToInt(point.x);
-		int iy0 = Mathf.FloorToInt(point.y);
-		int iz0 = Mathf.FloorToInt(point.z);
-		float tx = point.x - ix0;
-		float ty = point.y - iy0;
-		float tz = point.z - iz0;
-		ix0 &= hashMask;
-		iy0 &= hashMask;
-		iz0 &= hashMask;
-		int ix1 = ix0 + 1;
-		int iy1 = iy0 + 1;
-		int iz1 = iz0 + 1;
-
-		int h0 = hash[ix0];
-		int h1 = hash[ix1];
-		int h00 = hash[h0 + iy0];
-		int h10 = hash[h1 + iy0];
-		int h01 = hash[h0 + iy1];
-		int h11 = hash[h1 + iy1];
-		int h000 = hash[h00 + iz0];
-		int h100 = hash[h10 + iz0];
-		int h010 = hash[h01 + iz0];
-		int h110 = hash[h11 + iz0];
-		int h001 = hash[h00 + iz1];
-		int h101 = hash[h10 + iz1];
-		int h011 = hash[h01 + iz1];
-		int h111 = hash[h11 + iz1];
-
-		float dtx = SmoothDerivative(tx);
-		float dty = SmoothDerivative(ty);
-		float dtz = SmoothDerivative(tz);
-		tx = Smooth(tx);
-		ty = Smooth(ty);
-		tz = Smooth(tz);
-
-		float a = h000;
-		float b = h100 - h000;
-		float c = h010 - h000;
-		float d = h001 - h000;
-		float e = h110 - h010 - h100 + h000;
-		float f = h101 - h001 - h100 + h000;
-		float g = h011 - h001 - h010 + h000;
-		float h = h111 - h011 - h101 + h001 - h110 + h010 + h100 - h000;
-		
-		NoiseSample sample;
-		sample.value = a + b * tx + (c + e * tx) * ty + (d + f * tx + (g + h * tx) * ty) * tz;
-		sample.derivative.x = (b + e * ty + (f + h * ty) * tz) * dtx;
-		sample.derivative.y = (c + e * tx + (g + h * tx) * tz) * dty;
-		sample.derivative.z = (d + f * tx + (g + h * tx) * ty) * dtz;
-		sample.derivative *= frequency;
-		return sample * (1f / hashMask);
-	}
-
-	public static NoiseSample Perlin1D (Vector3 point, float frequency) {
-		point *= frequency;
-		int i0 = Mathf.FloorToInt(point.x);
-		float t0 = point.x - i0;
-		float t1 = t0 - 1f;
-		i0 &= hashMask;
-		int i1 = i0 + 1;
-		
-		float g0 = gradients1D[hash[i0] & gradientsMask1D];
-		float g1 = gradients1D[hash[i1] & gradientsMask1D];
-
-		float v0 = g0 * t0;
-		float v1 = g1 * t1;
-
-		float dt = SmoothDerivative(t0);
-		float t = Smooth(t0);
-
-		float a = v0;
-		float b = v1 - v0;
-
-		float da = g0;
-		float db = g1 - g0;
-
-		NoiseSample sample;
-		sample.value = a + b * t;
-		sample.derivative.x = da + db * t + b * dt;
-		sample.derivative.y = 0f;
-		sample.derivative.z = 0f;
-		sample.derivative *= frequency;
-		return sample * 2f;
-	}
 	
-	public static NoiseSample Perlin2D (Vector3 point, float frequency) {
+	public static NoiseSample Perlin2D (Vector3 point, float frequency, int repeatable_tiles) {
 		point *= frequency;
 		int ix0 = Mathf.FloorToInt(point.x);
 		int iy0 = Mathf.FloorToInt(point.y);
@@ -308,12 +150,12 @@ public static class Noise {
 		int ix1 = ix0 + 1;
 		int iy1 = iy0 + 1;
 		
-		int h0 = hash[ix0 % 4];
-		int h1 = hash[ix1 % 4];
-		Vector2 g00 = gradients2D[hash[(h0 + iy0) % 4] & gradientsMask2D];
-		Vector2 g10 = gradients2D[hash[(h1 + iy0) % 4] & gradientsMask2D];
-		Vector2 g01 = gradients2D[hash[(h0 + iy1) % 4] & gradientsMask2D];
-		Vector2 g11 = gradients2D[hash[(h1 + iy1) % 4] & gradientsMask2D];
+		int h0 = hash[ix0 % repeatable_tiles];
+		int h1 = hash[ix1 % repeatable_tiles];
+		Vector2 g00 = gradients2D[hash[(h0 + iy0) % repeatable_tiles] & gradientsMask2D];
+		Vector2 g10 = gradients2D[hash[(h1 + iy0) % repeatable_tiles] & gradientsMask2D];
+		Vector2 g01 = gradients2D[hash[(h0 + iy1) % repeatable_tiles] & gradientsMask2D];
+		Vector2 g11 = gradients2D[hash[(h1 + iy1) % repeatable_tiles] & gradientsMask2D];
 
 		float v00 = Dot(g00, tx0, ty0);
 		float v10 = Dot(g10, tx1, ty0);
@@ -338,7 +180,7 @@ public static class Noise {
 		NoiseSample sample;
 		sample.value = a + b * tx + (c + d * tx) * ty;
 
-        float test = Mathf.Lerp(Mathf.Lerp(v00, v10, tx), Mathf.Lerp(v01, v11, tx), ty);
+        //float test = Mathf.Lerp(Mathf.Lerp(v00, v10, tx), Mathf.Lerp(v01, v11, tx), ty);
 
 
 		sample.derivative = da + db * tx + (dc + dd * tx) * ty;
@@ -349,7 +191,7 @@ public static class Noise {
 		return sample * sqr2;
 	}
 	
-	public static NoiseSample Perlin3D (Vector3 point, float frequency) {
+	public static NoiseSample Perlin3D (Vector3 point, float frequency, int repeatable_tiles) {
 		point *= frequency;
 		int ix0 = Mathf.FloorToInt(point.x);
 		int iy0 = Mathf.FloorToInt(point.y);
@@ -367,20 +209,20 @@ public static class Noise {
 		int iy1 = iy0 + 1;
 		int iz1 = iz0 + 1;
 		
-		int h0 = hash[ix0];
-		int h1 = hash[ix1];
-		int h00 = hash[h0 + iy0];
-		int h10 = hash[h1 + iy0];
-		int h01 = hash[h0 + iy1];
-		int h11 = hash[h1 + iy1];
-		Vector3 g000 = gradients3D[hash[h00 + iz0] & gradientsMask3D];
-		Vector3 g100 = gradients3D[hash[h10 + iz0] & gradientsMask3D];
-		Vector3 g010 = gradients3D[hash[h01 + iz0] & gradientsMask3D];
-		Vector3 g110 = gradients3D[hash[h11 + iz0] & gradientsMask3D];
-		Vector3 g001 = gradients3D[hash[h00 + iz1] & gradientsMask3D];
-		Vector3 g101 = gradients3D[hash[h10 + iz1] & gradientsMask3D];
-		Vector3 g011 = gradients3D[hash[h01 + iz1] & gradientsMask3D];
-		Vector3 g111 = gradients3D[hash[h11 + iz1] & gradientsMask3D];
+		int h0 = hash[ix0 % repeatable_tiles];
+		int h1 = hash[ix1 % repeatable_tiles];
+		int h00 = hash[(h0 + iy0) % repeatable_tiles];
+		int h10 = hash[(h1 + iy0) % repeatable_tiles];
+		int h01 = hash[(h0 + iy1) % repeatable_tiles];
+		int h11 = hash[(h1 + iy1) % repeatable_tiles];
+		Vector3 g000 = gradients3D[hash[(h00 + iz0) % repeatable_tiles] & gradientsMask3D];
+		Vector3 g100 = gradients3D[hash[(h10 + iz0) % repeatable_tiles] & gradientsMask3D];
+		Vector3 g010 = gradients3D[hash[(h01 + iz0) % repeatable_tiles] & gradientsMask3D];
+		Vector3 g110 = gradients3D[hash[(h11 + iz0) % repeatable_tiles] & gradientsMask3D];
+		Vector3 g001 = gradients3D[hash[(h00 + iz1) % repeatable_tiles] & gradientsMask3D];
+		Vector3 g101 = gradients3D[hash[(h10 + iz1) % repeatable_tiles] & gradientsMask3D];
+		Vector3 g011 = gradients3D[hash[(h01 + iz1) % repeatable_tiles] & gradientsMask3D];
+		Vector3 g111 = gradients3D[hash[(h11 + iz1) % repeatable_tiles] & gradientsMask3D];
 
 		float v000 = Dot(g000, tx0, ty0, tz0);
 		float v100 = Dot(g100, tx1, ty0, tz0);
@@ -426,15 +268,15 @@ public static class Noise {
 		return sample;
 	}
 
-	public static NoiseSample Sum (NoiseMethod method, Vector3 point, float frequency, int octaves, float lacunarity, float persistence) {
-		NoiseSample sum = method(point, frequency);
+	public static NoiseSample Sum (NoiseMethod method, Vector3 point, float frequency, int octaves, float lacunarity, float persistence, int repeatable_tiles) {
+		NoiseSample sum = method(point, frequency, repeatable_tiles);
 		float amplitude = 1f;
 		float range = 1f;
 		for (int o = 1; o < octaves; o++) {
 			frequency *= lacunarity;
 			amplitude *= persistence;
 			range += amplitude;
-			sum += method(point, frequency) * amplitude;
+			sum += method(point, frequency, repeatable_tiles) * amplitude;
 		}
 		return sum * (1f / range);
 	}
